@@ -1,5 +1,4 @@
 const dns = require('node:dns');
-const db = require('express');
 
 /* Model */
 const Shorturl = require('../models/shorturl');
@@ -29,57 +28,10 @@ function generateNewId() {
 }
 
 function createAndSaveNewUrl(url, done) {
-  let isDone = false;
-
   const newId = generateNewId();
 
   const data = new Shorturl({original_url: url, short_url: newId});
   done(null, data);
-
-  // data.save(function (err, data) {
-  //   if (err) {
-  //     return console.log(err);
-  //   }
-
-  //   isDone = true;
-  //   done(null, data);
-  // });
-
-  // while (!isDone) {
-  //   const newId = generateNewId();
-
-  //   const data = new Shorturl({original_url: url, short_url: newId});
-
-  //   data.save(function (err, data) {
-  //     if (err) {
-  //       return console.log(err);
-  //     }
-
-  //     isDone = true;
-  //     done(null, data);
-  //   });
-  //   // Shorturl.countDocuments({short_url: newId}, function (err, foundMatch) {
-  //   //   if (err) {
-  //   //     if (err.code) return console.log('There is duplicate URL');
-
-  //   //     return console.log('Error generating doc: ', err);
-  //   //   }
-
-  //   //   if (foundMatch === 0) {
-  //   //     count = 0;
-
-  //   //     const data = new Shorturl({original_url: url, short_url: newId});
-
-  //   //     data.save(function (err, data) {
-  //   //       if (err) return done(err);
-
-  //   //       done(null, data);
-  //   //     });
-  //   //   } else {
-  //   //     newId = generateNewId();
-  //   //   }
-  //   // });
-  // }
 }
 
 /* Verify URL */
@@ -95,6 +47,8 @@ function verifyUrl(url, done) {
     targetUrl = new URL(url);
 
     console.log(targetUrl);
+    if (targetUrl.hostname === '')
+      return done(new Error('Invalid URL format!'));
 
     // Lookup DNS
     dns.lookup(targetUrl.hostname, dnsOptions, function (err, address) {
