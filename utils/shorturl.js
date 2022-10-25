@@ -4,30 +4,82 @@ const db = require('express');
 /* Model */
 const Shorturl = require('../models/shorturl');
 
-function generateNewId() {
-  const id = Math.floor(Math.random() * 1000000000000);
-  return id;
+/* Look up URL in doc */
+function countMatch(url, done) {
+  Shorturl.countDocuments({original_url: url}, function (err, res) {
+    if (err) return done(err);
+
+    done(null, res);
+  });
 }
 
-async function createAndSaveNewUrl() {
-  const newId = await generateNewId();
+function filterAndReturnMatch(url, done) {
+  Shorturl.findOne({original_url: url}, function (err, doc) {
+    if (err) return done(err);
 
-  const newUrl = new Shorturl({
-    original_url: 'https://www.example.com/aaa',
-    // id: '634e1d46ce96ee93fa5bc717',
+    done(null, doc);
   });
+}
 
-  newUrl.save(function (err, data) {
-    if (err) {
-      if (err.code === 11000) return console.log('There is duplicate URL');
-
-      console.log('Error saving doc: ', err);
-    }
-
-    console.log(data);
-  });
+/* Generate and save new URL */
+function generateNewId() {
+  const newId = Math.floor(Math.random() * 1000000000000);
 
   return newId;
+}
+
+function createAndSaveNewUrl(url, done) {
+  let isDone = false;
+
+  const newId = generateNewId();
+
+  const data = new Shorturl({original_url: url, short_url: newId});
+  done(null, data);
+
+  // data.save(function (err, data) {
+  //   if (err) {
+  //     return console.log(err);
+  //   }
+
+  //   isDone = true;
+  //   done(null, data);
+  // });
+
+  // while (!isDone) {
+  //   const newId = generateNewId();
+
+  //   const data = new Shorturl({original_url: url, short_url: newId});
+
+  //   data.save(function (err, data) {
+  //     if (err) {
+  //       return console.log(err);
+  //     }
+
+  //     isDone = true;
+  //     done(null, data);
+  //   });
+  //   // Shorturl.countDocuments({short_url: newId}, function (err, foundMatch) {
+  //   //   if (err) {
+  //   //     if (err.code) return console.log('There is duplicate URL');
+
+  //   //     return console.log('Error generating doc: ', err);
+  //   //   }
+
+  //   //   if (foundMatch === 0) {
+  //   //     count = 0;
+
+  //   //     const data = new Shorturl({original_url: url, short_url: newId});
+
+  //   //     data.save(function (err, data) {
+  //   //       if (err) return done(err);
+
+  //   //       done(null, data);
+  //   //     });
+  //   //   } else {
+  //   //     newId = generateNewId();
+  //   //   }
+  //   // });
+  // }
 }
 
 /* Verify URL */
@@ -47,11 +99,12 @@ function verifyUrl(url, done) {
     // Lookup DNS
     dns.lookup(targetUrl.hostname, dnsOptions, function (err, address) {
       if (err) {
-        err.hints = 'Page not found.';
+        err.hints = 'Error finding page.';
         return done(err);
       }
-
-      done(null, address);
+      console.log(address);
+      // Page found
+      return done(null, address);
     });
   } catch (err) {
     // Invalid input format
@@ -61,4 +114,10 @@ function verifyUrl(url, done) {
 }
 
 exports.verifyUrl = verifyUrl;
+exports.countMatch = countMatch;
+exports.filterAndReturnMatch = filterAndReturnMatch;
 exports.createAndSaveNewUrl = createAndSaveNewUrl;
+// exports.createAndSaveNewUrl = createAndSaveNewUrl;
+
+// Test
+exports.generateNewId = generateNewId;

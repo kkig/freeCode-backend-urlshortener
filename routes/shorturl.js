@@ -8,7 +8,12 @@ const shorturlRouter = db.Router();
 // Model
 const Shorturl = require('../models/shorturl');
 
-const {verifyUrl} = require('../utils/shorturl');
+const {
+  verifyUrl,
+  countMatch,
+  filterAndReturnMatch,
+  createAndSaveNewUrl,
+} = require('../utils/shorturl');
 
 // const woo = createAndSaveNewUrl();
 // console.log('id: ', woo);
@@ -38,62 +43,65 @@ shorturlRouter.get('/', function (req, res) {
   res.send({greeting: 'Route works!'});
 });
 
-shorturlRouter.post('/', function (req, res) {
-  // Verify URL
-  verifyUrl(req.body.url, function (err, data) {
+shorturlRouter.get('/:short_url', function (req, res) {
+  // res.json({ResNum: req.params.short_url});
+
+  Shorturl.findOne({short_url: req.params.short_url}, function (err, foundDoc) {
     if (err) {
-      console.log(err);
-      return res.json({error: 'invalid url', hints: err.hints});
+      return res.json({error: err});
     }
-    console.log(data);
+
+    if (foundDoc === null) res.json({error: 'invalid short url'});
+
+    res.json(foundDoc);
+  });
+  // Shorturl.findOne({short_url: req.params.short_url})
+});
+
+shorturlRouter.post('/', function (req, res) {
+  // Lookup existing url match
+  countMatch(req.body.url, function (err, count) {
+    if (err) return console.log('Error counting match: ', err);
+
+    const urlEntered = req.body.url;
+
+    // Return existing doc OR create new doc
+    if (count === 0) {
+      createAndSaveNewUrl(urlEntered, function (err, doc) {
+        if (err) console.log(err);
+
+        res.json({
+          original_url: doc.original_url,
+          short_url: doc.short_url,
+          res: 'No match - created new doc.',
+        });
+      });
+    } else {
+      filterAndReturnMatch(urlEntered, function (err, doc) {
+        if (err) return console.log('Error returning match: ', err);
+
+        // return res.send(doc);
+        res.json({
+          original_url: doc.original_url,
+          short_url: doc.short_url,
+          res: 'Match found!',
+          resCount: count,
+        });
+      });
+    }
   });
 
-  // Verify URL with DNS
-  // const options = {
-  //   family: 6,
-  // };
-
-  // dns.lookup(targetUrl.hostname, options, function (err, address) {
+  // Verify URL
+  // verifyUrl(req.body.url, function (err, address) {
   //   if (err) {
-  //     // DNS error
-  //     console.log('DNS error!');
-
-  //     res.json({error: err});
-  //   } else {
-  //     // DNS found
-  //     console.log(address);
-
-  //     const newUrl = new Shorturl({
-  //       original_url: req.body.url,
-  //       short_url: Schema.Types.ObjectId,
-  //     });
-
-  //     // newUrl.short_url = Number(newUrl.id);
-
-  //     console.log(newUrl);
-
-  //     newUrl.save(function (err, dataSaved) {
-  //       if (err) {
-  //         if (err.code === 11000) {
-  //           console.log('There is duplicate!');
-  //           // There is duplicate URL in the collection
-  //           Shorturl.findOne(
-  //             {original_url: newUrl.original_url},
-  //             function (err, docFound) {
-  //               if (err) return res.json({error: err});
-
-  //               res.redirect(docFound.original_url);
-  //             }
-  //           );
-  //         } else {
-  //           res.json({error: err});
-  //         }
-  //       } else {
-  //         // Duplicate not found
-  //         res.json({msg: 'New data!'});
-  //       }
-  //     });
+  //     console.log(err);
+  //     return res.json({error: 'invalid url', hints: err.hints});
   //   }
+
+  //   // Invalid form when hostname === null
+  //   if (address === null) return res.json({error: 'invalid url'});
+
+  //   res.json({msg: 'Yay!'});
   // });
 });
 
